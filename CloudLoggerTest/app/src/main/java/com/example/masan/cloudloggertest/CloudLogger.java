@@ -1,0 +1,96 @@
+package com.example.masan.cloudloggertest;
+
+import android.util.Log;
+
+import java.io.IOException;
+import java.io.PrintStream;
+
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * Created by masan on 2016/10/21.
+ */
+
+public class CloudLogger {
+
+    private HttpURLConnection con;
+    private PrintStream printStream;
+
+    private List<LinkedList<String>> dataList;
+
+    private URL Url;
+
+    public CloudLogger(String url) {
+        dataList = new LinkedList<LinkedList<String>>();
+        try {
+            Url = new URL(url);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        Log.d("CloudLogger#CloudLogger","Create CloudLogger");
+        //Set();
+    }
+
+    public void set() {
+        try {
+            con = (HttpURLConnection) Url.openConnection();
+
+            con.setInstanceFollowRedirects(false);
+            con.setRequestProperty("Accept-Language", "jp");
+            con.setDoInput(true);
+            con.setDoOutput(true);
+
+            con.setRequestMethod("POST");
+
+            con.setRequestProperty("Connection", "Keep-Alive");
+            con.setRequestProperty("Content-Type", "text/plain");
+
+            printStream = new PrintStream(con.getOutputStream());
+            Log.d("CloudLogger#Set","---connection was created---");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void bufferedWrite(LinkedList<String> data) {
+        dataList.add(data);
+        //send();
+    }
+
+    public void send() {
+        while (!dataList.isEmpty()) {
+            set();
+
+            StringBuilder sb = new StringBuilder();
+            for (String str : dataList.get(0)) {
+                sb.append(str + ",");
+            }
+            int index = sb.lastIndexOf(",");
+            sb.deleteCharAt(index); //http://yamato-java.blogspot.jp/2011/09/public-class-first-public-static-void.html
+
+            printStream.print(sb.toString());
+            printStream.close();
+            try {
+                if (con.getResponseMessage().equals("OK")) {
+                    Log.d("CloudLogger#send","send " + dataList.get(0).get(0));
+                    Log.d("CloudLogger#send","remove " + dataList.get(0).get(0));
+                    dataList.remove(0);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            con.disconnect();
+            Log.d("CloudLogger#send","---connection was disconnected---");
+        }
+    }
+
+    public void close() {
+        con.disconnect();
+        printStream.close();
+    }
+}
